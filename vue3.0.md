@@ -89,7 +89,7 @@ setup 语法糖
 
 * 注意：setup中的this不再指向组件实例
 
-### 2. reactive和ref函数
+### 2.reactive和ref函数
 
 reactive()
 
@@ -322,4 +322,369 @@ deep
     watch(state, ())
 </script>
 ```
+
+* 注意：deep性能损耗较大，尽量不开启deep
+
+案例
+
+```vue
+<script setup>
+    import {ref, watch} from 'vue'
+    const state = ref({count:0})
+    watch(state, (newValue, oldValue)=>{
+        console.log('数据变化了，新的数据为：' + newValue)
+        // 如果没有deep参数的话，直接修改对象中的数据是不会被侦听到的
+    }, {deep: true})
+    
+    // 定义一个方法用于直接修改对象中的数据
+    const changeState = () =>{
+        state.value.count++
+    } 
+</script>
+```
+
+精确侦听
+
+需求：在不开启deep的前提下，侦听age的变化只有age变化时才能执行回调
+
+```vue
+<script setup>
+    import {ref, watch} from 'vue'
+    const state = ref({count:0, age:2})
+    
+
+    watch(
+        ()=>state.value.age, 
+        // 将state中的属性用回调函数传入watch
+        (newVlaue, oldValue)=>{
+        console.log('数据变化了')
+    })
+    
+    const changeAge = ()=>{
+        state.value.age++
+    }
+</script>
+```
+
+* 疑问：如果想要监听同一对象中的两个或两个以上的属性时应该如何处理？
+
+### 4.生命周期函数
+
+|      选项式API       |    组合式API    |
+| :------------------: | :-------------: |
+| beforeCreate/created |      setup      |
+|     beforeMount      |  onBeforeMount  |
+|       mounted        |    onMounted    |
+|     beforeUpdate     | onBeforeUpdate  |
+|       updated        |    onUpdated    |
+|    beforeUnmount     | onBeforeUnmount |
+|      unmounted       |   onUnmounted   |
+
+使用：1.导入生命周期函数。2.执行生命周期函数 传入回调
+
+```vue
+<script setup>
+    import {onMounted} from 'vue'
+    // 执行函数，并传递回调
+    onMounted(()=>{
+        console.log('组件已挂载')
+    })
+</script>
+```
+
+执行多次
+
+生命周期函数是可以执行多次的，多次执行时传入的回调会在时机成熟时依次执行。
+
+```vue
+<script setup>
+	import {onMounted} from 'vue'
+
+    onMounted(()=>{
+        console.log('1')
+    })
+    
+    onMounted(()=>{
+        console.log('2')
+    })
+    
+    // 结果为
+    // 1
+    // 2
+</script>
+```
+
+* <font color='green'>可以用于补充代码</font>
+
+### 5.父子通信 - (父传子)
+
+基本思想
+
+1.父组件给子组件绑定属性
+
+2.子组件内部通过props选项接受
+
+案例
+
+* 父组件
+
+```vue
+<script setup>
+// 导入子组件
+import sonComVue from './son-com.vue'
+const count = ref(100)
+setInterval(()=>{
+    count.value++
+},3000)
+</script>
+
+<template>
+<!--绑定属性以及响应式数据-->
+<sonComVue message="this is app message" :count="count"/>
+</template>
+```
+
+* 子组件
+
+```vue
+<script setup>
+// 通过defineProps "编译器宏" 接受数据
+const props = defineProps({ message:String, count:Number })
+console.log(props)
+</script>
+
+<template>
+{{message}} - {{count}}
+</template>
+
+```
+
+### 6.父子通信 - (子传父)
+
+基本思想
+
+1.父组件中给子组件标签通过@绑定事件
+
+2.子组件内部通过$emit方法触发事件
+
+案例
+
+父组件
+
+```vue
+<script setup>
+// 导入子组件
+import sonComVue from './son-com.vue'
+const getMessage = (msg)=>{
+    console.log(msg)
+}
+</script>
+
+<template>
+<!--绑定自定义事件-->
+<sonComVue @get-message="getMessage" /></sonComVue>
+</template>
+```
+
+子组件
+
+```vue
+<script setup>
+    // 通过defineEmits编译器宏生成emit方法
+    const emit = definEmits(['get-message'])
+    const sendMsg = ()=>{
+        // 触发自定义事件 并传递参数
+        // 第二个参数为数据
+        emit('get-message', 'this is son msg')
+    }
+</script>
+
+<template>
+	<button @click="sendMsg">sendMsg</button>
+</template>
+```
+
+* 疑问：如果emit中有多个事件，应该如何处理
+
+### 7.模板引用
+
+概念
+
+通过ref标识获取真实dom对象或者组件实例对象
+
+使用
+
+1.调用函数生成一个ref对象。2.通过ref标识绑定ref对象到标签
+
+案例
+
+获取dom实例对象
+
+```vue
+<script setup>
+import {ref, onMounted} from 'vue'
+// 调用ref函数得到ref对象
+const h1Ref = ref(null)
+
+onMounted(()=>{
+    console.log(h1Ref.value)
+})
+</script>
+
+<template>
+<!--通过ref标识绑定ref对象-->
+<h1 ref="h1Ref">I am a label of DOM named 'h1'</h1>
+</template>
+```
+
+获取组件实例对象
+
+```vue
+<script setup>
+import {ref} from 'vue'
+import SonComVue from './son-com.vue'
+const comRef = ref(null)
+
+const showSon = ()=>{
+    console.log(comRef.value)
+}
+</script>
+
+<template>
+	<button @click="showSon">
+        click me
+    </button>
+	<SonComVue ref='comRef'></SonComVue>
+</template>
+```
+
+defineExpose()
+
+默认情况下在<script setup>语法糖下组件内部的属性和方法是不开放给父组件访问的，可以通过defineExpose编译宏指定哪些方法允许访问
+
+案例
+
+子组件
+
+```vue
+<script setup>
+import {ref} from 'vue'
+const name = ref('Mike')
+const changeName = ()=>{
+    name.value = name.value.split('').reverse().join('')
+}
+
+defineExpose({
+    name, changeNmae
+})
+</script>
+```
+
+父组件
+
+```vue
+<script setup>
+import {ref} from 'vue'
+import SonComVue from './son-com.vue'
+const comRef = ref(null)
+const switchName = () => {
+    comRef.value.changeName()
+}
+</script>
+
+<template>
+<button @click='switchName'>
+	click me    
+</button>
+<SonCom ref="comRef" />
+</template>
+```
+
+### 8.provide和inject
+
+作用：顶层组件向任意的底层组件传递<font color='red'>数据</font>和<font color='yellow'>方法</font>，实现跨层组件通信
+
+使用：1.顶层组件通过provide函数提供数据。2.底层组件通过inject函数获取数据
+
+顶层组件
+
+```js
+provide('key', 顶层组件中的数据) // key 为标识
+```
+
+底层组件
+
+```js
+const message = inject('key') // 找到key
+```
+
+案例
+
+顶层组件
+
+```vue
+<script setup>
+// 导入proviede
+import {provide, ref} from 'vue'
+import RoomMsgItem from './room-msg-item.vue'
+
+// 组件嵌套关系:
+// RoomPage -> RoomMsgItem -> RoomMsgComment
+
+// 提供静态数据
+provide('data-key', 'this is a message')
+    
+// 提供响应式数据
+const count = ref(0)
+provide('count-key', count)
+    
+// 提供方法
+const countPlus = ()=>{
+    count.value++
+}
+provide('count-plus', countPlus)
+</script>
+
+<template>
+	<div class='page'>
+        <!--顶层组件-->
+        <RoomMsgItem></RoomMsgItem>
+    </div>
+</template>
+```
+
+底层组件
+
+```vue
+<script setup>
+// 导入inject
+import {inject} from 'vue'
+// 接收数据
+const roomData = inject('data-key')
+const roomCount = inject('count-key')
+// 接收方法
+const changeData = inject('count-plus')
+</script>
+
+<template>
+	<div class="comment">
+        <!--底层组件-->
+       	<div>
+        	来自顶层组件的数据为: {{ roomData }}
+    	</div>
+        <div>
+        	来自顶层组件的响应式数据为：{{ roomCount }}
+    	</div>
+        <div>
+        	<button @click='changeData'>click me</button>    
+    	</div>
+    </div>
+</template>
+```
+
+* 注意：一棵组件树中存在多个顶层和底层对应关系
+
+
+
+
 
