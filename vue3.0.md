@@ -684,7 +684,156 @@ const changeData = inject('count-plus')
 
 * 注意：一棵组件树中存在多个顶层和底层对应关系
 
+## 3.认识Pinia
 
+pinia是vue专属的最新状态管理库，用来代替vuex
+
+### 1.安装Pinia
+
+1.创建一个空项目
+
+```cmdline
+npm init vue@latest
+```
+
+2.安装依赖
+
+```cmdline
+npm install
+```
+
+3.安装pinia
+
+```cmdline
+npm install pinia
+```
+
+4.创建一个pinia实例并将其传递给应用
+
+```js
+// main.js
+import {createApp} from 'vue'
+import {createPinia} from 'pinia'
+import App from './App.vue'
+
+const pinia = createPinia()
+const app = createApp(App)
+
+app.use(pinia)
+app.mount('#app')
+```
+
+### 2.理解和应用Store
+
+什么是store
+
+Store (如 Pinia) 是一个保存状态和业务逻辑的实体，它并不与你的组件树绑定。换句话说，**它承载着全局状态**。它有点像一个永远存在的组件，每个组件都可以读取和写入它。它有**三个概念**，[state](https://pinia.vuejs.org/zh/core-concepts/state.html)、[getter](https://pinia.vuejs.org/zh/core-concepts/getters.html) 和 [action](https://pinia.vuejs.org/zh/core-concepts/actions.html)，我们可以假设这些概念相当于组件中的 `data`、 `computed` 和 `methods`。
+
+什么时候使用store
+
+一个 Store 应该包含可以在整个应用中访问的数据。这包括在许多地方使用的数据，例如显示在导航栏中的用户信息，以及需要通过页面保存的数据，例如一个非常复杂的多步骤表单。另一方面，你应该避免在 Store 中引入那些原本可以在组件中保存的本地数据，例如，一个元素在页面中的可见性。
+
+### 3.初步使用
+
+案例
+
+创建Store
+
+```js
+// store/counter.js
+export const useCounterStore = defineStore('counter', () => {
+  const count = ref(0)
+  const increment = ()=> {
+    count.value++
+  }
+  // 不能漏掉返回内容
+  return { count, increment }
+})
+```
+
+使用Store
+
+```vue
+<script setup>
+import { useCounterStore } from '@/stores/counter'
+const counter = useCounterStore()
+</script>
+<template>
+<button @click="counter.increment">click me</button>
+  <!-- 直接从 store 中访问 state -->
+  <div>Current Count: {{ counter.count }}</div>
+</template>
+```
+
+### 5.getters和异步action
+
+getters（computed）实现
+
+pinia中的getters直接使用computed函数进行模拟
+
+```js
+// store/counter.js
+import {defineStore} from 'pinia'
+import {ref, computed} from 'vue'
+export useCounterStore = defineStore('counter', ()=>{
+    const count = ref(0)
+    
+    const increment = ()=>{
+        count.value++
+    }
+    
+    const doubleCount = computed(()=>{
+        return count.value * 2
+    })
+    
+    return {count, doubleCount}
+})
+```
+
+异步action（methods)
+
+异步action的实现和在组件中相同
+
+```js
+// store/counter.js
+const API_URL = 'http://geek.itheima.net/v1_0/channels'
+const list = ref([])
+const loadList = async () => {
+    const res = await axios.get(API_URL)
+    list.value = res.data.channels
+}
+```
+
+```vue
+<script setup>
+import { useCounterStore } from '@/stores/counter'
+import {onMounted} from 'vue'
+const counter = useCounterStore()
+
+// 在生命周期函数中调用loadList
+onMounted(()=>{
+    counter.loadList()
+})
+</script>
+```
+
+### 6.storeToRefs
+
+使用storeToRefs函数可以辅助保持数据（state + getter) 的响应式解构
+
+```vue
+<script setup>
+import {storeToRefs} from 'pinia'
+import {useCounterStore} from '@/stores/counter'
+const counter = useCounterStore()
+
+// 调用storeToRefs
+const {count, doubleCount} = storeToRefs(counter)
+
+// 方法必须从原来的counter中解构赋值
+const {increment} = counter
+</script>
+```
 
 
 
